@@ -23,19 +23,14 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await Swal.fire({
-      title: "Do You want to signup with Travely?",
-      showDenyButton: true,
-      showCancelButton: true,
-      confirmButtonText: "Save",
-      denyButtonText: `Don't save`,
-    });
+
+    // --- VALIDATION LOGIC ---
 
     if (password !== repeatPassword) {
       Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: "Password Not Matched!",
+        text: "Passwords do not match!",
       });
       return;
     }
@@ -43,7 +38,7 @@ const Register = () => {
       Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: "missing required fields!",
+        text: "Missing required fields!",
       });
       return;
     }
@@ -51,100 +46,116 @@ const Register = () => {
       Swal.fire("Please enter a valid email address", "", "error");
       return;
     }
-    if (mobile.length !== 10) {
+
+    // --- UPDATED BANGLADESHI MOBILE VALIDATION ---
+    const bangladeshiMobileRegex = /^(?:\+88|88)?(01[3-9]\d{8})$/;
+    if (!bangladeshiMobileRegex.test(mobile)) {
       Swal.fire({
         icon: "error",
-        title: "Oops...",
-        text: "enter valid mobile number",
+        title: "Invalid Mobile Number",
+        text: "Please enter a valid Bangladeshi mobile number (e.g., 01xxxxxxxxx).",
       });
       return;
     }
-    if (password.length <= 6) {
+    // --- END OF MOBILE VALIDATION ---
+
+    if (password.length < 6) {
       Swal.fire({
         icon: "error",
         title: "Oops...",
-        text: "password must at least have 6 charaters",
+        text: "Password must be at least 6 characters long.",
       });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "Do you want to sign up with Travely?",
+      showDenyButton: true,
+      confirmButtonText: "Yes, Sign Up",
+      denyButtonText: `Don't Sign Up`,
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 
     setLoading2(true);
 
     try {
+      // Check for existing user first to avoid unnecessary image uploads
       const existingUser = await axios.get(`auth/check-email?email=${email}`);
 
       if (existingUser.data.message === "Email already exists") {
         Swal.fire({
           icon: "error",
           title: "Oops...",
-          text: "User with this email already exists!",
+          text: "A user with this email already exists!",
         });
         setLoading2(false);
         return;
       }
 
-      const data = new FormData();
-      data.append("file", file);
-      data.append("upload_preset", "upload");
+      let imageUrl = ""; // Default empty image URL
 
+      // --- IMPROVED IMAGE UPLOAD HANDLING ---
+      // Upload image to Cloudinary if a file is selected
       if (file) {
-        const uploadRes = await axios.post(
-          "https://api.cloudinary.com/v1_1/dpgelkpd4/image/upload",
-          data
-        );
-
-        const { url } = uploadRes.data;
-
-        const response = await axios.post("auth/register", {
-          name,
-          email,
-          mobile,
-          country,
-          type,
-          password,
-          img: url,
-        });
-
-        Swal.fire(
-          "Congratulations! You Have Successfully Registered with Travely",
-          "",
-          "success"
-        );
-        navigate("/login");
-      } else {
-        const response = await axios.post("auth/register", {
-          name,
-          email,
-          mobile,
-          country,
-          type,
-          password,
-        });
-
-        Swal.fire(
-          "Congratulations! You Have Successfully Registered with Travely",
-          "",
-          "success"
-        );
-        navigate("/login");
+        try {
+          const data = new FormData();
+          data.append("file", file);
+          data.append("upload_preset", "upload"); // Make sure this is your correct preset
+          const uploadRes = await axios.post(
+            "https://api.cloudinary.com/v1_1/dlwgfnikw/image/upload",
+            data
+          );
+          imageUrl = uploadRes.data.url;
+        } catch (uploadError) {
+          console.error("Cloudinary Upload Error:", uploadError);
+          // Notify user that image upload failed but registration can continue
+          await Swal.fire({
+            icon: "warning",
+            title: "Image Upload Failed",
+            text: "Your profile picture could not be uploaded, but you can still complete your registration.",
+          });
+          // imageUrl remains ""
+        }
       }
+      // --- END OF IMPROVED HANDLING ---
 
-      setLoading2(false);
+      // Create user data object
+      const newUser = {
+        name,
+        email,
+        mobile,
+        country,
+        type,
+        password,
+        img: imageUrl, // Will be empty if upload failed or no file was selected
+      };
+
+      // Register the user
+      await axios.post("auth/register", newUser);
+
+      Swal.fire(
+        "Congratulations!",
+        "You have successfully registered with Travely.",
+        "success"
+      );
+      navigate("/login");
     } catch (err) {
-      if (err.message === "Request failed with status code 409") {
-        Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: "User with this email already exists!",
-        });
-        setLoading2(false);
-        return;
+      // Handle potential errors during registration
+      let errorMessage = "Something went wrong. Please try again.";
+      if (err.response && err.response.status === 409) {
+        errorMessage = "A user with this email already exists!";
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       Swal.fire({
         icon: "error",
-        title: "Oops...",
-        text: err.message,
+        title: "Registration Failed",
+        text: errorMessage,
       });
+    } finally {
       setLoading2(false);
     }
   };
@@ -164,7 +175,7 @@ const Register = () => {
         </div>
         <div className="mb-6 flex sm:flex-row justify-center">
           <img
-            className="rounded-full"
+            className="rounded-full object-cover"
             src={
               file
                 ? URL.createObjectURL(file)
@@ -177,8 +188,8 @@ const Register = () => {
         <div>
           <form onSubmit={handleSubmit}>
             <div className="mb-6 flex flex-row justify-center items-center text-center">
-              <label htmlFor="file">
-                click here to add a profile picture :{" "}
+              <label htmlFor="file" className="cursor-pointer">
+                Click here to add a profile picture:{" "}
                 <DriveFolderUploadOutlinedIcon />
               </label>
               <input
@@ -188,12 +199,12 @@ const Register = () => {
                 style={{ display: "none" }}
                 accept="image/*"
                 onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file && !file.type.startsWith("image/")) {
+                  const selectedFile = e.target.files[0];
+                  if (selectedFile && !selectedFile.type.startsWith("image/")) {
                     Swal.fire("Please select an image file", "", "error");
                     return;
                   }
-                  setFile(file);
+                  setFile(selectedFile);
                 }}
               />
             </div>
@@ -214,12 +225,12 @@ const Register = () => {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                class="bordder-[#E9EDF4] w-full rounded-3xl border bg-[#FCFDFE] py-3 px-5 text-base text-body-color placeholder-[#ACB6BE] outline-none focus:ring focus:border-[#41A4FF] focus-visible:shadow-none"
+                className="bordder-[#E9EDF4] w-full rounded-3xl border bg-[#FCFDFE] py-3 px-5 text-base text-body-color placeholder-[#ACB6BE] outline-none focus:ring focus:border-[#41A4FF] focus-visible:shadow-none"
               />
             </div>
             <div className="mb-6">
               <input
-                placeholder="Mobile"
+                placeholder="Mobile (e.g., 01...)"
                 type="tel"
                 id="mobile"
                 value={mobile}
@@ -248,7 +259,7 @@ const Register = () => {
                   <option value="traveler">Traveler</option>
                   <option value="hotelOwner">Hotel Owner</option>
                   <option value="vehicleOwner">Vehicle Owner</option>
-                  <option value="resturentOwner">Resturent Owner</option>
+                  <option value="resturentOwner">Restaurant Owner</option>
                   <option value="tourGuide">Tour Guide</option>
                   <option value="eventOrganizer">Event Organizer</option>
                 </select>
@@ -287,8 +298,9 @@ const Register = () => {
               <button
                 type="submit"
                 className=" w-full font-bold text-center hover:bg-gray-600 cursor-pointer rounded-3xl bg-[#41A4FF] py-3 px-5 text-white transition hover:bg-opacity-90"
+                disabled={loading2}
               >
-                Sign Up
+                {loading2 ? "Signing Up..." : "Sign Up"}
               </button>
             </div>
           </form>
@@ -297,7 +309,7 @@ const Register = () => {
 
         <div className="flex flex-col justify-center text-center pb-20">
           <p className="text-base text-[#adadad]">
-            Already a member yet?
+            Already a member?
             <Link
               to="/login"
               className="text-primary hover:underline ms-2 font-bold"

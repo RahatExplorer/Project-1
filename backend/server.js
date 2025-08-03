@@ -48,14 +48,14 @@ app.use("/api/vehicle/images", express.static(path.join(__dirname, "images")));
 app.use("/api/vehiclereservation", reservationRouter);
 
 //chamith
-const hotels = require('./routes/hotels');
-const rooms = require('./routes/rooms');
-const hotelreservation = require('./routes/hotelReservationRoute');
+const hotels = require("./routes/hotels");
+const rooms = require("./routes/rooms");
+const hotelreservation = require("./routes/hotelReservationRoute");
 
-app.use('/api/hotels', hotels);
-app.use('/api/rooms', rooms);
-app.use('/api/hotelreservation',hotelreservation)
-app.use('/api/hotels/images', express.static(path.join(__dirname, 'images')));
+app.use("/api/hotels", hotels);
+app.use("/api/rooms", rooms);
+app.use("/api/hotelreservation", hotelreservation);
+app.use("/api/hotels/images", express.static(path.join(__dirname, "images")));
 
 //navindi
 const restaurantRoute = require("./routes/restaurantRoute.js");
@@ -82,20 +82,18 @@ app.use("/api/seatBookings", seatBookingRouter);
 const flightBookingRouter = require("./routes/SeatBookingFlight");
 app.use("/api/flight", flightBookingRouter);
 
-
 // dinidu
-const refundRouter = require("./routes/RefundRoute")
-app.use("/api/refund",refundRouter)
+const refundRouter = require("./routes/RefundRoute");
+app.use("/api/refund", refundRouter);
 
-const EmployeeRouter = require("./routes/EmployeeRoute")
-app.use("/api/employee",EmployeeRouter)
+const EmployeeRouter = require("./routes/EmployeeRoute");
+app.use("/api/employee", EmployeeRouter);
 
-const SalaryRouter = require("./routes/SalaryRoute")
-app.use("/api/salary",SalaryRouter)
+const SalaryRouter = require("./routes/SalaryRoute");
+app.use("/api/salary", SalaryRouter);
 
-const RecordRouter = require("./routes/FinanceHealth")
-app.use("/api/record",RecordRouter)
-
+const RecordRouter = require("./routes/FinanceHealth");
+app.use("/api/record", RecordRouter);
 
 //hansika
 const ActivityRoute = require("./routes/activityRoute");
